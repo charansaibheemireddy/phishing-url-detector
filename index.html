@@ -5,13 +5,14 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <title>PhishGuard | URL Security Scanner</title>
+    <title>PhishGuard | Phishing URL Detector</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="style.css">
 
 </head>
 
@@ -24,12 +25,17 @@
     <div class="brand">
 
         <div class="brand-icon">
-            🛡
+            🛡️
         </div>
 
         <div>
+
             <h2>PhishGuard</h2>
-            <span>Security Scanner</span>
+
+            <span>
+                URL Security
+            </span>
+
         </div>
 
     </div>
@@ -37,7 +43,7 @@
 
     <nav>
 
-        <a class="active">
+        <a href="#dashboard" class="active">
             <span>⌂</span>
             Dashboard
         </a>
@@ -60,13 +66,18 @@
     </nav>
 
 
-    <div class="sidebar-bottom">
+    <div class="system-status">
 
-        <div class="status-dot"></div>
+        <span class="status-dot"></span>
 
         <div>
+
             <small>Scanner Status</small>
-            <strong>System Online</strong>
+
+            <strong>
+                Online
+            </strong>
+
         </div>
 
     </div>
@@ -74,31 +85,31 @@
 </aside>
 
 
-<!-- MAIN -->
+<!-- MAIN CONTENT -->
 
 <main class="main">
 
 
-    <!-- TOPBAR -->
+    <!-- TOP -->
 
     <header class="topbar">
 
         <div>
 
-            <p class="eyebrow">
+            <p class="label">
                 SECURITY DASHBOARD
             </p>
 
             <h1>
-                URL Threat Detection
+                Phishing URL Detector
             </h1>
 
         </div>
 
 
-        <div class="security-status">
+        <div class="protection">
 
-            <span class="online-dot"></span>
+            <span></span>
 
             Protection Active
 
@@ -107,14 +118,14 @@
     </header>
 
 
-    <!-- HERO -->
+    <!-- DASHBOARD -->
 
-    <section class="hero" id="scanner">
+    <section id="dashboard" class="hero">
 
-        <div class="hero-content">
+        <div class="hero-title">
 
-            <div class="shield-large">
-                🛡
+            <div class="shield">
+                🛡️
             </div>
 
             <div>
@@ -124,8 +135,8 @@
                 </h2>
 
                 <p>
-                    Analyze suspicious links and identify
-                    potential phishing indicators.
+                    Analyze a website address for
+                    common phishing indicators.
                 </p>
 
             </div>
@@ -133,30 +144,30 @@
         </div>
 
 
-        <!-- SEARCH -->
+        <!-- URL INPUT -->
 
-        <div class="scanner-box">
+        <div id="scanner" class="scanner">
 
-            <div class="input-wrapper">
+            <div class="input-area">
 
-                <span class="link-icon">
-                    🔗
-                </span>
+                <span>🔗</span>
 
                 <input
-                    type="text"
                     id="urlInput"
-                    placeholder="Enter a URL, e.g. https://example.com"
+                    type="text"
+                    placeholder="Enter URL — https://example.com"
                     autocomplete="off"
                 >
 
             </div>
 
-            <button
-                class="scan-button"
-                onclick="scanURL()">
 
-                <span>Scan URL</span>
+            <button
+                onclick="scanURL()"
+                class="scan-btn"
+            >
+
+                Scan URL
 
                 <span>→</span>
 
@@ -165,13 +176,31 @@
         </div>
 
 
-        <div class="scan-note">
+        <p class="privacy">
 
-            <span>🔒</span>
+            🔒 Analysis happens directly in your browser.
 
-            Your URL is analyzed locally by the security engine.
+        </p>
 
-        </div>
+    </section>
+
+
+    <!-- LOADING -->
+
+    <section
+        id="loading"
+        class="loading"
+    >
+
+        <div class="spinner"></div>
+
+        <h3>
+            Analyzing URL...
+        </h3>
+
+        <p>
+            Checking security indicators
+        </p>
 
     </section>
 
@@ -180,31 +209,29 @@
 
     <section
         id="result"
-        class="result-section">
+        class="results"
+    >
 
-
-        <!-- SCORE -->
-
-        <div class="result-header">
+        <div class="result-top">
 
             <div>
 
-                <p class="section-label">
+                <p class="label">
                     SCAN RESULT
                 </p>
 
-                <h2 id="status">
+                <h2 id="resultTitle">
                     Analysis Complete
                 </h2>
 
             </div>
 
+
             <div
+                id="riskBadge"
                 class="risk-badge"
-                id="riskBadge">
-
+            >
                 --
-
             </div>
 
         </div>
@@ -213,9 +240,9 @@
         <div class="result-grid">
 
 
-            <!-- SCORE CARD -->
+            <!-- RISK -->
 
-            <div class="card score-card">
+            <div class="card risk-card">
 
                 <p class="card-label">
                     RISK SCORE
@@ -229,42 +256,48 @@
                             0
                         </strong>
 
-                        <span>/100</span>
+                        <small>
+                            /100
+                        </small>
 
                     </div>
 
                 </div>
 
+
                 <p
                     id="recommendation"
-                    class="recommendation">
-
+                    class="recommendation"
+                >
                 </p>
 
             </div>
 
 
-            <!-- URL CARD -->
+            <!-- URL -->
 
-            <div class="card url-card">
+            <div class="card">
 
                 <p class="card-label">
                     ANALYZED URL
                 </p>
 
+
                 <div
                     id="analyzedUrl"
-                    class="analyzed-url">
-
+                    class="url-box"
+                >
                     --
-
                 </div>
 
-                <div class="url-meta">
+
+                <div class="url-info">
 
                     <div>
 
-                        <span>Protocol</span>
+                        <span>
+                            Protocol
+                        </span>
 
                         <strong id="protocol">
                             --
@@ -272,11 +305,27 @@
 
                     </div>
 
+
                     <div>
 
-                        <span>Domain</span>
+                        <span>
+                            Domain
+                        </span>
 
                         <strong id="domain">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Length
+                        </span>
+
+                        <strong id="urlLength">
                             --
                         </strong>
 
@@ -289,11 +338,11 @@
         </div>
 
 
-        <!-- ANALYSIS -->
+        <!-- INDICATORS -->
 
-        <div class="card analysis-card">
+        <div class="card analysis">
 
-            <div class="analysis-title">
+            <div class="analysis-head">
 
                 <div>
 
@@ -307,42 +356,21 @@
 
                 </div>
 
-                <span class="analysis-count"
-                      id="indicatorCount">
 
+                <span id="indicatorCount">
                     0 indicators
-
                 </span>
 
             </div>
 
 
             <div
-                id="reasons"
-                class="indicators">
-
+                id="indicators"
+                class="indicators"
+            >
             </div>
 
         </div>
-
-    </section>
-
-
-    <!-- LOADING -->
-
-    <section
-        id="loading"
-        class="loading-section">
-
-        <div class="loader"></div>
-
-        <h3>
-            Analyzing URL
-        </h3>
-
-        <p>
-            Checking security indicators...
-        </p>
 
     </section>
 
@@ -351,13 +379,14 @@
 
     <section
         id="history"
-        class="history-section">
+        class="history"
+    >
 
-        <div class="section-heading">
+        <div class="section-head">
 
             <div>
 
-                <p class="section-label">
+                <p class="label">
                     ACTIVITY
                 </p>
 
@@ -367,12 +396,12 @@
 
             </div>
 
+
             <button
                 onclick="clearHistory()"
-                class="clear-button">
-
-                Clear History
-
+                class="clear-btn"
+            >
+                Clear
             </button>
 
         </div>
@@ -380,18 +409,21 @@
 
         <div
             id="historyList"
-            class="history-list">
+            class="history-list"
+        >
 
-            <div class="empty-history">
+            <div class="empty">
 
-                <span>◷</span>
+                <div>
+                    ◷
+                </div>
 
                 <p>
                     No scans yet
                 </p>
 
                 <small>
-                    Your recent URL scans will appear here.
+                    Scanned URLs will appear here.
                 </small>
 
             </div>
@@ -401,22 +433,23 @@
     </section>
 
 
-    <!-- SECURITY TIPS -->
+    <!-- TIPS -->
 
     <section
         id="tips"
-        class="tips-section">
+        class="tips"
+    >
 
-        <div class="section-heading">
+        <div class="section-head">
 
             <div>
 
-                <p class="section-label">
-                    STAY SAFE
+                <p class="label">
+                    SECURITY AWARENESS
                 </p>
 
                 <h2>
-                    Phishing Protection Tips
+                    Stay Safe Online
                 </h2>
 
             </div>
@@ -424,9 +457,10 @@
         </div>
 
 
-        <div class="tips-grid">
+        <div class="tip-grid">
 
-            <div class="tip-card">
+
+            <div class="tip">
 
                 <div class="tip-icon">
                     🔍
@@ -437,48 +471,48 @@
                 </h3>
 
                 <p>
-                    Look carefully at the domain name.
-                    Attackers often use domains that look
-                    similar to legitimate websites.
+                    Attackers may use domains that
+                    look similar to legitimate websites.
                 </p>
 
             </div>
 
 
-            <div class="tip-card">
+            <div class="tip">
 
                 <div class="tip-icon">
                     🔒
                 </div>
 
                 <h3>
-                    Look for HTTPS
+                    Check HTTPS
                 </h3>
 
                 <p>
-                    HTTPS encrypts communication between
-                    your browser and the website.
+                    Look for HTTPS when entering
+                    sensitive information.
                 </p>
 
             </div>
 
 
-            <div class="tip-card">
+            <div class="tip">
 
                 <div class="tip-icon">
                     ⚠️
                 </div>
 
                 <h3>
-                    Avoid suspicious links
+                    Think before clicking
                 </h3>
 
                 <p>
-                    Be careful with unexpected links asking
-                    for passwords, payments or personal data.
+                    Be careful with unexpected links
+                    asking for passwords or payments.
                 </p>
 
             </div>
+
 
         </div>
 
@@ -489,9 +523,9 @@
 
     <footer>
 
-        <div>
-            🛡 <strong>PhishGuard</strong>
-        </div>
+        <strong>
+            🛡️ PhishGuard
+        </strong>
 
         <span>
             Educational Cybersecurity Project • 2026
@@ -499,10 +533,11 @@
 
     </footer>
 
+
 </main>
 
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="script.js"></script>
 
 </body>
 
