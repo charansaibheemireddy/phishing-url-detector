@@ -1,38 +1,123 @@
 let historyData =
     JSON.parse(
-        localStorage.getItem(
-            "phishguard_history"
-        )
+        localStorage.getItem("phishguard_history")
     ) || [];
 
+
+/* =========================================================
+   PHISHGUARD URL DETECTION ENGINE
+   ========================================================= */
+
+
+/* Common suspicious words found in phishing URLs */
 
 const suspiciousWords = [
 
     "login",
     "signin",
+    "sign-in",
     "verify",
     "verification",
+    "authenticate",
+    "authentication",
     "account",
     "update",
     "secure",
     "security",
     "password",
+    "passwd",
     "confirm",
+    "confirmation",
     "bank",
+    "banking",
     "wallet",
     "payment",
+    "pay",
+    "billing",
+    "invoice",
     "recover",
-    "unlock"
+    "recovery",
+    "unlock",
+    "suspend",
+    "suspended",
+    "alert",
+    "urgent",
+    "validate",
+    "credential",
+    "credentials",
+    "webmail",
+    "support",
+    "microsoft",
+    "paypal",
+    "apple",
+    "google",
+    "facebook",
+    "instagram",
+    "amazon",
+    "netflix"
+];
+
+
+/* Common brands attackers may try to imitate */
+
+const popularBrands = [
+
+    "paypal",
+    "microsoft",
+    "google",
+    "apple",
+    "amazon",
+    "facebook",
+    "instagram",
+    "netflix",
+    "linkedin",
+    "whatsapp",
+    "steam",
+    "github",
+    "outlook",
+    "office365",
+    "dropbox",
+    "adobe",
+    "docusign",
+    "coinbase",
+    "binance"
 
 ];
 
 
+/* TLDs that deserve additional scrutiny.
+   They are NOT automatically malicious. */
+
+const suspiciousTLDs = [
+
+    ".tk",
+    ".ml",
+    ".ga",
+    ".cf",
+    ".gq",
+    ".top",
+    ".xyz",
+    ".click",
+    ".link",
+    ".work",
+    ".download",
+    ".zip",
+    ".mov",
+    ".cam",
+    ".buzz",
+    ".monster"
+
+];
+
+
+/* =========================================================
+   MAIN SCANNER
+   ========================================================= */
+
 function scanURL() {
 
     const input =
-        document.getElementById(
-            "urlInput"
-        );
+        document.getElementById("urlInput");
 
     const value =
         input.value.trim();
@@ -40,18 +125,11 @@ function scanURL() {
 
     if (!value) {
 
-        alert(
-            "Please enter a URL first."
-        );
+        alert("Please enter a URL first.");
 
         return;
 
     }
-
-
-    document.getElementById(
-        "results"
-    );
 
 
     document.getElementById(
@@ -64,42 +142,38 @@ function scanURL() {
     ).style.display = "none";
 
 
-    /*
-        Small delay makes the scanner
-        feel like a real security engine.
-    */
-
     setTimeout(() => {
 
         const result =
             analyzeURL(value);
 
 
-        displayResult(
-            result
-        );
+        displayResult(result);
 
-
-        saveHistory(
-            result
-        );
+        saveHistory(result);
 
 
         document.getElementById(
             "loading"
         ).style.display = "none";
 
-
     }, 900);
 
 }
 
 
+/* =========================================================
+   URL ANALYSIS
+   ========================================================= */
+
 function analyzeURL(original) {
 
-    let url =
-        original;
+    let url = original.trim();
 
+
+    /*
+        Add protocol if the user did not enter one.
+    */
 
     if (
         !url.startsWith("http://") &&
@@ -130,14 +204,14 @@ function analyzeURL(original) {
 
             score: 100,
 
-            status: "Invalid URL",
+            status: "High Risk",
 
             reasons: [
-                "The entered URL could not be parsed."
+                "❌ The entered URL is invalid or cannot be parsed."
             ],
 
             recommendation:
-                "Check the URL and try again."
+                "Do not open this link. Check the URL carefully."
 
         };
 
@@ -145,7 +219,11 @@ function analyzeURL(original) {
 
 
     const hostname =
-        parsed.hostname;
+        parsed.hostname.toLowerCase();
+
+
+    const fullURL =
+        original.toLowerCase();
 
 
     let score = 0;
@@ -153,11 +231,12 @@ function analyzeURL(original) {
     const reasons = [];
 
 
-    /* HTTPS */
+    /* =====================================================
+       1. HTTPS CHECK
+       ===================================================== */
 
     if (
-        parsed.protocol !==
-        "https:"
+        parsed.protocol !== "https:"
     ) {
 
         score += 15;
@@ -169,13 +248,58 @@ function analyzeURL(original) {
     }
 
 
-    /* URL LENGTH */
+    /* =====================================================
+       2. IP ADDRESS CHECK
+       ===================================================== */
+
+    const ipv4Pattern =
+        /^(?:\d{1,3}\.){3}\d{1,3}$/;
+
+
+    const ipv6Pattern =
+        /^\[?[0-9a-fA-F:]+\]?$/;
+
 
     if (
-        original.length > 75
+        ipv4Pattern.test(hostname) ||
+        ipv6Pattern.test(hostname)
     ) {
 
-        score += 15;
+        score += 30;
+
+        reasons.push(
+            "🚨 Website uses an IP address instead of a normal domain"
+        );
+
+    }
+
+
+    /* =====================================================
+       3. PUNYCODE CHECK
+       ===================================================== */
+
+    if (
+        hostname.includes("xn--")
+    ) {
+
+        score += 30;
+
+        reasons.push(
+            "🚨 Domain uses Punycode, which can be used for look-alike domains"
+        );
+
+    }
+
+
+    /* =====================================================
+       4. URL LENGTH
+       ===================================================== */
+
+    if (
+        original.length > 100
+    ) {
+
+        score += 20;
 
         reasons.push(
             "⚠ URL is unusually long"
@@ -183,72 +307,97 @@ function analyzeURL(original) {
 
     }
 
-
-    /* IP ADDRESS */
-
-    const ipPattern =
-        /^(?:\d{1,3}\.){3}\d{1,3}$/;
-
-
-    if (
-        ipPattern.test(
-            hostname
-        )
+    else if (
+        original.length > 75
     ) {
 
-        score += 25;
+        score += 10;
 
         reasons.push(
-            "⚠ URL uses an IP address instead of a domain"
+            "⚠ URL is longer than typical"
         );
 
     }
 
 
-    /* @ SYMBOL */
+    /* =====================================================
+       5. @ SYMBOL
+       ===================================================== */
 
     if (
         original.includes("@")
     ) {
 
-        score += 20;
+        score += 25;
 
         reasons.push(
-            "⚠ URL contains an @ symbol"
+            "🚨 URL contains an @ symbol"
         );
 
     }
 
 
-    /* MANY SUBDOMAINS */
+    /* =====================================================
+       6. MULTIPLE SUBDOMAINS
+       ===================================================== */
 
-    const dots =
-        hostname.split(".").length - 1;
+    const hostnameParts =
+        hostname.split(".");
+
+
+    const dotCount =
+        hostnameParts.length - 1;
 
 
     if (
-        dots >= 3
+        dotCount >= 4
+    ) {
+
+        score += 25;
+
+        reasons.push(
+            "🚨 Domain contains an unusually large number of subdomains"
+        );
+
+    }
+
+    else if (
+        dotCount >= 3
     ) {
 
         score += 15;
 
         reasons.push(
-            "⚠ URL contains multiple subdomains"
+            "⚠ Domain contains multiple subdomains"
         );
 
     }
 
 
-    /* HYPHENS */
+    /* =====================================================
+       7. HYPHEN CHECK
+       ===================================================== */
 
-    const hyphens =
-        (hostname.match(
-            /-/g
-        ) || []).length;
+    const hyphenCount =
+        (
+            hostname.match(/-/g) || []
+        ).length;
 
 
     if (
-        hyphens >= 2
+        hyphenCount >= 4
+    ) {
+
+        score += 20;
+
+        reasons.push(
+            "⚠ Domain contains many hyphens"
+        );
+
+    }
+
+    else if (
+        hyphenCount >= 2
     ) {
 
         score += 10;
@@ -260,36 +409,398 @@ function analyzeURL(original) {
     }
 
 
-    /* SUSPICIOUS WORDS */
+    /* =====================================================
+       8. SUSPICIOUS TLD
+       ===================================================== */
 
-    const lower =
-        original.toLowerCase();
-
-
-    const foundWords =
-        suspiciousWords.filter(
-            word =>
-                lower.includes(word)
+    const suspiciousTLD =
+        suspiciousTLDs.find(
+            tld =>
+                hostname.endsWith(tld)
         );
 
 
     if (
-        foundWords.length > 0
+        suspiciousTLD
     ) {
 
-        score += Math.min(
-            foundWords.length * 5,
-            20
+        score += 15;
+
+        reasons.push(
+            "⚠ Domain uses a TLD frequently associated with suspicious links: " +
+            suspiciousTLD
+        );
+
+    }
+
+
+    /* =====================================================
+       9. SUSPICIOUS KEYWORDS
+       ===================================================== */
+
+    const foundWords =
+        suspiciousWords.filter(
+            word =>
+                fullURL.includes(word)
         );
 
 
+    if (
+        foundWords.length >= 4
+    ) {
+
+        score += 25;
+
         reasons.push(
-            "⚠ Suspicious keywords: " +
+            "🚨 Multiple suspicious keywords detected: " +
+            foundWords.slice(0, 6).join(", ")
+        );
+
+    }
+
+    else if (
+        foundWords.length >= 2
+    ) {
+
+        score += 15;
+
+        reasons.push(
+            "⚠ Suspicious keywords detected: " +
             foundWords.join(", ")
         );
 
     }
 
+    else if (
+        foundWords.length === 1
+    ) {
+
+        score += 7;
+
+        reasons.push(
+            "⚠ Suspicious keyword detected: " +
+            foundWords[0]
+        );
+
+    }
+
+
+    /* =====================================================
+       10. BRAND IMPERSONATION
+       ===================================================== */
+
+    const brandMatches =
+        popularBrands.filter(
+            brand =>
+                fullURL.includes(brand)
+        );
+
+
+    if (
+        brandMatches.length > 0
+    ) {
+
+        /*
+           Determine whether the brand is actually
+           the registered-looking domain itself.
+        */
+
+        const baseDomain =
+            hostnameParts
+                .slice(-2)
+                .join(".");
+
+
+        const impersonatedBrand =
+            brandMatches.find(
+                brand =>
+                    !baseDomain.startsWith(
+                        brand + "."
+                    ) &&
+                    !baseDomain.includes(
+                        brand
+                    )
+            );
+
+
+        if (
+            impersonatedBrand
+        ) {
+
+            score += 30;
+
+            reasons.push(
+                "🚨 Possible brand impersonation detected: " +
+                impersonatedBrand
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       11. REDIRECT PARAMETERS
+       ===================================================== */
+
+    const redirectWords = [
+
+        "redirect=",
+        "redirect_url=",
+        "redirecturl=",
+        "return=",
+        "returnurl=",
+        "url=",
+        "next=",
+        "continue=",
+        "destination=",
+        "target="
+
+    ];
+
+
+    const foundRedirect =
+        redirectWords.some(
+            word =>
+                fullURL.includes(word)
+        );
+
+
+    if (
+        foundRedirect
+    ) {
+
+        score += 12;
+
+        reasons.push(
+            "⚠ URL contains a possible redirect parameter"
+        );
+
+    }
+
+
+    /* =====================================================
+       12. ENCODED CHARACTERS
+       ===================================================== */
+
+    const encodedCount =
+        (
+            original.match(/%[0-9a-fA-F]{2}/g)
+            || []
+        ).length;
+
+
+    if (
+        encodedCount >= 5
+    ) {
+
+        score += 20;
+
+        reasons.push(
+            "⚠ URL contains many encoded characters"
+        );
+
+    }
+
+    else if (
+        encodedCount >= 2
+    ) {
+
+        score += 8;
+
+        reasons.push(
+            "⚠ URL contains encoded characters"
+        );
+
+    }
+
+
+    /* =====================================================
+       13. SPECIAL CHARACTER COUNT
+       ===================================================== */
+
+    const specialCharacters =
+        (
+            original.match(
+                /[@?=&%$!#*]/g
+            ) || []
+        ).length;
+
+
+    if (
+        specialCharacters >= 10
+    ) {
+
+        score += 20;
+
+        reasons.push(
+            "⚠ URL contains an unusually high number of special characters"
+        );
+
+    }
+
+
+    /* =====================================================
+       14. PORT CHECK
+       ===================================================== */
+
+    const port =
+        parsed.port;
+
+
+    if (
+        port &&
+        port !== "80" &&
+        port !== "443"
+    ) {
+
+        score += 15;
+
+        reasons.push(
+            "⚠ Website uses a non-standard network port: " +
+            port
+        );
+
+    }
+
+
+    /* =====================================================
+       15. DOUBLE SLASH PATH
+       ===================================================== */
+
+    if (
+        parsed.pathname.includes("//")
+    ) {
+
+        score += 10;
+
+        reasons.push(
+            "⚠ URL contains an unusual double-slash path"
+        );
+
+    }
+
+
+    /* =====================================================
+       16. EXCESSIVE QUERY PARAMETERS
+       ===================================================== */
+
+    const queryParameters =
+        parsed.search
+            ? parsed.search
+                .substring(1)
+                .split("&")
+                .length
+            : 0;
+
+
+    if (
+        queryParameters >= 8
+    ) {
+
+        score += 15;
+
+        reasons.push(
+            "⚠ URL contains an unusually large number of parameters"
+        );
+
+    }
+
+
+    /* =====================================================
+       17. RANDOM-LOOKING DOMAIN
+       ===================================================== */
+
+    const domainWithoutTLD =
+        hostnameParts.length >= 2
+            ? hostnameParts[
+                hostnameParts.length - 2
+            ]
+            : hostname;
+
+
+    const digitCount =
+        (
+            domainWithoutTLD.match(/\d/g)
+            || []
+        ).length;
+
+
+    if (
+        domainWithoutTLD.length >= 12 &&
+        digitCount >= 4
+    ) {
+
+        score += 15;
+
+        reasons.push(
+            "⚠ Domain contains an unusual combination of letters and numbers"
+        );
+
+    }
+
+
+    /* =====================================================
+       18. VERY LONG DOMAIN
+       ===================================================== */
+
+    if (
+        domainWithoutTLD.length > 30
+    ) {
+
+        score += 15;
+
+        reasons.push(
+            "⚠ Domain name is unusually long"
+        );
+
+    }
+
+
+    /* =====================================================
+       19. CREDENTIAL PATH
+       ===================================================== */
+
+    const credentialPattern =
+        /\/(login|signin|verify|account|password|payment|bank|wallet)/i;
+
+
+    if (
+        credentialPattern.test(
+            parsed.pathname
+        )
+    ) {
+
+        score += 10;
+
+        reasons.push(
+            "⚠ URL contains a sensitive credential/payment-related path"
+        );
+
+    }
+
+
+    /* =====================================================
+       20. DATA URI / JAVASCRIPT URL
+       ===================================================== */
+
+    if (
+        fullURL.startsWith("javascript:") ||
+        fullURL.startsWith("data:")
+    ) {
+
+        score = 100;
+
+        reasons.push(
+            "🚨 Dangerous URL scheme detected"
+        );
+
+    }
+
+
+    /* =====================================================
+       FINAL SCORE
+       ===================================================== */
 
     score =
         Math.min(
@@ -298,32 +809,36 @@ function analyzeURL(original) {
         );
 
 
+    /* =====================================================
+       CLASSIFICATION
+       ===================================================== */
+
     let status;
 
     let recommendation;
 
 
     if (
-        score >= 60
+        score >= 70
     ) {
 
         status =
             "High Risk";
 
         recommendation =
-            "Avoid this website and do not enter passwords, payment details or personal information.";
+            "This URL contains several suspicious characteristics. Avoid opening it or entering personal information.";
 
     }
 
     else if (
-        score >= 30
+        score >= 35
     ) {
 
         status =
             "Suspicious";
 
         recommendation =
-            "Verify the domain carefully before interacting with this website.";
+            "This URL contains potentially suspicious characteristics. Verify the website independently before continuing.";
 
     }
 
@@ -333,7 +848,7 @@ function analyzeURL(original) {
             "Likely Safe";
 
         recommendation =
-            "No major suspicious URL patterns were detected.";
+            "No major suspicious URL patterns were detected. However, this does not guarantee that the website is safe.";
 
     }
 
@@ -366,6 +881,10 @@ function analyzeURL(original) {
 
 }
 
+
+/* =========================================================
+   DISPLAY RESULT
+   ========================================================= */
 
 function displayResult(data) {
 
@@ -419,7 +938,8 @@ function displayResult(data) {
     document.getElementById(
         "urlLength"
     ).textContent =
-        data.length || data.url.length;
+        data.length ||
+        data.url.length;
 
 
     const container =
@@ -484,14 +1004,17 @@ function displayResult(data) {
         " indicators";
 
 
+    /* Risk colors */
+
     if (
-        data.score >= 60
+        data.score >= 70
     ) {
 
         document.getElementById(
             "riskBadge"
         ).style.color =
             "#ff596b";
+
 
         document.querySelector(
             ".score-circle"
@@ -501,13 +1024,14 @@ function displayResult(data) {
     }
 
     else if (
-        data.score >= 30
+        data.score >= 35
     ) {
 
         document.getElementById(
             "riskBadge"
         ).style.color =
             "#f4c451";
+
 
         document.querySelector(
             ".score-circle"
@@ -522,6 +1046,7 @@ function displayResult(data) {
             "riskBadge"
         ).style.color =
             "#28d39b";
+
 
         document.querySelector(
             ".score-circle"
@@ -540,15 +1065,22 @@ function displayResult(data) {
 }
 
 
+/* =========================================================
+   HISTORY
+   ========================================================= */
+
 function saveHistory(data) {
 
     historyData.unshift({
 
-        url: data.url,
+        url:
+            data.url,
 
-        status: data.status,
+        status:
+            data.status,
 
-        score: data.score,
+        score:
+            data.score,
 
         time:
             new Date()
@@ -576,6 +1108,10 @@ function saveHistory(data) {
 
 }
 
+
+/* =========================================================
+   DISPLAY HISTORY
+   ========================================================= */
 
 function displayHistory() {
 
@@ -633,7 +1169,7 @@ function displayHistory() {
 
 
             if (
-                item.score >= 60
+                item.score >= 70
             ) {
 
                 color =
@@ -642,7 +1178,7 @@ function displayHistory() {
             }
 
             else if (
-                item.score >= 30
+                item.score >= 35
             ) {
 
                 color =
@@ -684,6 +1220,10 @@ function displayHistory() {
 }
 
 
+/* =========================================================
+   CLEAR HISTORY
+   ========================================================= */
+
 function clearHistory() {
 
     historyData = [];
@@ -698,6 +1238,10 @@ function clearHistory() {
 
 }
 
+
+/* =========================================================
+   HTML SECURITY
+   ========================================================= */
 
 function escapeHTML(value) {
 
@@ -716,12 +1260,12 @@ function escapeHTML(value) {
 }
 
 
-/* ENTER KEY */
+/* =========================================================
+   ENTER KEY SUPPORT
+   ========================================================= */
 
 document
-    .getElementById(
-        "urlInput"
-    )
+    .getElementById("urlInput")
     .addEventListener(
         "keydown",
         event => {
@@ -738,6 +1282,8 @@ document
     );
 
 
-/* LOAD HISTORY */
+/* =========================================================
+   LOAD HISTORY
+   ========================================================= */
 
 displayHistory();
