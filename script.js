@@ -1,15 +1,23 @@
+/* =========================================================
+   PHISHGUARD
+   Phishing URL Detection Tool
+   ========================================================= */
+
+
+/* =========================================================
+   SCAN HISTORY
+   ========================================================= */
+
 let historyData =
     JSON.parse(localStorage.getItem("phishguard_history")) || [];
 
 
 /* =========================================================
-   PHISHGUARD URL DETECTION ENGINE
+   SUSPICIOUS KEYWORDS
    ========================================================= */
 
-
-/* Suspicious words commonly found in phishing URLs */
-
 const suspiciousWords = [
+
     "login",
     "signin",
     "sign-in",
@@ -44,12 +52,16 @@ const suspiciousWords = [
     "credentials",
     "webmail",
     "support"
+
 ];
 
 
-/* Popular brands commonly impersonated by phishing sites */
+/* =========================================================
+   BRANDS COMMONLY TARGETED BY PHISHING
+   ========================================================= */
 
 const popularBrands = [
+
     "paypal",
     "microsoft",
     "google",
@@ -69,13 +81,16 @@ const popularBrands = [
     "docusign",
     "coinbase",
     "binance"
+
 ];
 
 
-/* TLDs that deserve additional scrutiny.
-   These are NOT automatically malicious. */
+/* =========================================================
+   SUSPICIOUS TLDs
+   ========================================================= */
 
 const suspiciousTLDs = [
+
     ".tk",
     ".ml",
     ".ga",
@@ -92,17 +107,27 @@ const suspiciousTLDs = [
     ".cam",
     ".buzz",
     ".monster"
+
 ];
 
 
 /* =========================================================
-   MAIN SCANNER
+   SCAN URL
    ========================================================= */
 
 function scanURL() {
 
     const input =
         document.getElementById("urlInput");
+
+    if (!input) {
+
+        console.error("urlInput not found.");
+
+        return;
+
+    }
+
 
     const value =
         input.value.trim();
@@ -117,10 +142,12 @@ function scanURL() {
     }
 
 
-    /* Show loading screen if available */
-
     const loading =
         document.getElementById("loading");
+
+    const result =
+        document.getElementById("result");
+
 
     if (loading) {
 
@@ -129,27 +156,22 @@ function scanURL() {
     }
 
 
-    const resultBox =
-        document.getElementById("result");
+    if (result) {
 
-    if (resultBox) {
-
-        resultBox.style.display = "none";
+        result.style.display = "none";
 
     }
 
 
-    /* Small delay for scanning animation */
+    setTimeout(function () {
 
-    setTimeout(() => {
-
-        const result =
+        const analysis =
             analyzeURL(value);
 
 
-        displayResult(result);
+        displayResult(analysis);
 
-        saveHistory(result);
+        saveHistory(analysis);
 
 
         if (loading) {
@@ -158,26 +180,30 @@ function scanURL() {
 
         }
 
-    }, 700);
+    }, 500);
 
 }
 
 
 /* =========================================================
-   URL ANALYSIS
+   ANALYZE URL
    ========================================================= */
 
-function analyzeURL(original) {
+function analyzeURL(originalURL) {
 
     let url =
-        original.trim();
+        originalURL.trim();
 
 
-    /* Add protocol when user enters only a domain */
+    /*
+       Add http:// when the user enters only a domain.
+    */
 
     if (
         !url.startsWith("http://") &&
-        !url.startsWith("https://")
+        !url.startsWith("https://") &&
+        !url.startsWith("javascript:") &&
+        !url.startsWith("data:")
     ) {
 
         url =
@@ -186,38 +212,38 @@ function analyzeURL(original) {
     }
 
 
-    let parsed;
+    let parsedURL;
 
 
     try {
 
-        parsed =
+        parsedURL =
             new URL(url);
 
     }
 
-    catch {
+    catch (error) {
 
         return {
 
-            url: original,
+            url: originalURL,
 
             score: 100,
 
             status: "High Risk",
 
             reasons: [
-                "🚨 The entered URL is invalid or cannot be parsed."
+                "🚨 Invalid or malformed URL"
             ],
 
             recommendation:
-                "Do not open this link. Check the URL carefully.",
+                "Do not open this URL. Check the address carefully.",
 
             protocol: "--",
 
             domain: "--",
 
-            length: original.length
+            length: originalURL.length
 
         };
 
@@ -225,27 +251,27 @@ function analyzeURL(original) {
 
 
     const hostname =
-        parsed.hostname.toLowerCase();
+        parsedURL.hostname.toLowerCase();
 
 
     const fullURL =
-        original.toLowerCase();
+        originalURL.toLowerCase();
 
 
     let score = 0;
 
-    const reasons = [];
+    let reasons = [];
 
 
     /* =====================================================
-       1. HTTPS CHECK
+       1. HTTPS
        ===================================================== */
 
     if (
-        parsed.protocol !== "https:"
+        parsedURL.protocol !== "https:"
     ) {
 
-        score += 15;
+        score += 10;
 
         reasons.push(
             "⚠ Website does not use HTTPS"
@@ -255,20 +281,15 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       2. IP ADDRESS CHECK
+       2. IP ADDRESS
        ===================================================== */
 
-    const ipv4Pattern =
+    const ipv4 =
         /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
 
-    const ipv6Pattern =
-        /^\[?[0-9a-fA-F:]+\]?$/;
-
-
     if (
-        ipv4Pattern.test(hostname) ||
-        ipv6Pattern.test(hostname)
+        ipv4.test(hostname)
     ) {
 
         score += 30;
@@ -281,7 +302,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       3. PUNYCODE CHECK
+       3. PUNYCODE
        ===================================================== */
 
     if (
@@ -298,11 +319,11 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       4. URL LENGTH CHECK
+       4. LONG URL
        ===================================================== */
 
     if (
-        original.length > 100
+        originalURL.length > 120
     ) {
 
         score += 20;
@@ -314,7 +335,7 @@ function analyzeURL(original) {
     }
 
     else if (
-        original.length > 75
+        originalURL.length > 80
     ) {
 
         score += 10;
@@ -327,11 +348,11 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       5. @ SYMBOL CHECK
+       5. @ SYMBOL
        ===================================================== */
 
     if (
-        original.includes("@")
+        originalURL.includes("@")
     ) {
 
         score += 25;
@@ -344,19 +365,19 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       6. SUBDOMAIN CHECK
+       6. MANY SUBDOMAINS
        ===================================================== */
 
     const hostnameParts =
         hostname.split(".");
 
 
-    const dotCount =
+    const numberOfDots =
         hostnameParts.length - 1;
 
 
     if (
-        dotCount >= 4
+        numberOfDots >= 4
     ) {
 
         score += 25;
@@ -368,7 +389,7 @@ function analyzeURL(original) {
     }
 
     else if (
-        dotCount >= 3
+        numberOfDots >= 3
     ) {
 
         score += 15;
@@ -381,7 +402,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       7. HYPHEN CHECK
+       7. HYPHENS
        ===================================================== */
 
     const hyphenCount =
@@ -416,25 +437,28 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       8. SUSPICIOUS TLD CHECK
+       8. SUSPICIOUS TLD
        ===================================================== */
 
-    const suspiciousTLD =
+    const matchedTLD =
         suspiciousTLDs.find(
-            tld =>
-                hostname.endsWith(tld)
+            function (tld) {
+
+                return hostname.endsWith(tld);
+
+            }
         );
 
 
     if (
-        suspiciousTLD
+        matchedTLD
     ) {
 
         score += 15;
 
         reasons.push(
             "⚠ Domain uses a TLD frequently seen in suspicious links: " +
-            suspiciousTLD
+            matchedTLD
         );
 
     }
@@ -446,8 +470,11 @@ function analyzeURL(original) {
 
     const foundWords =
         suspiciousWords.filter(
-            word =>
-                fullURL.includes(word)
+            function (word) {
+
+                return fullURL.includes(word);
+
+            }
         );
 
 
@@ -455,11 +482,11 @@ function analyzeURL(original) {
         foundWords.length >= 4
     ) {
 
-        score += 25;
+        score += 30;
 
         reasons.push(
             "🚨 Multiple suspicious keywords detected: " +
-            foundWords.slice(0, 6).join(", ")
+            foundWords.slice(0, 8).join(", ")
         );
 
     }
@@ -468,7 +495,7 @@ function analyzeURL(original) {
         foundWords.length >= 2
     ) {
 
-        score += 15;
+        score += 20;
 
         reasons.push(
             "⚠ Suspicious keywords detected: " +
@@ -492,75 +519,91 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       10. BRAND IMPERSONATION CHECK
+       10. BRAND IMPERSONATION
        ===================================================== */
 
-    const baseDomain =
-        hostnameParts.length >= 2
-            ? hostnameParts.slice(-2).join(".")
-            : hostname;
+    const brandFound =
+        popularBrands.find(
+            function (brand) {
 
+                return fullURL.includes(brand);
 
-    const brandMatches =
-        popularBrands.filter(
-            brand =>
-                fullURL.includes(brand)
-        );
-
-
-    const impersonatedBrand =
-        brandMatches.find(
-            brand =>
-                !baseDomain.startsWith(
-                    brand + "."
-                ) &&
-                !baseDomain.startsWith(
-                    brand
-                )
+            }
         );
 
 
     if (
-        impersonatedBrand
+        brandFound
     ) {
 
-        score += 30;
+        /*
+           Look at the registered-looking domain.
+        */
 
-        reasons.push(
-            "🚨 Possible brand impersonation detected: " +
-            impersonatedBrand
-        );
+        const baseDomain =
+            hostnameParts.length >= 2
+                ? hostnameParts
+                    .slice(-2)
+                    .join(".")
+                : hostname;
+
+
+        const isBrandDomain =
+            baseDomain.startsWith(
+                brandFound + "."
+            ) ||
+            baseDomain.startsWith(
+                brandFound
+            );
+
+
+        if (
+            !isBrandDomain
+        ) {
+
+            score += 30;
+
+            reasons.push(
+                "🚨 Possible brand impersonation detected: " +
+                brandFound
+            );
+
+        }
 
     }
 
 
     /* =====================================================
-       11. REDIRECT PARAMETER CHECK
+       11. REDIRECT PARAMETERS
        ===================================================== */
 
-    const redirectWords = [
+    const redirectPatterns = [
+
         "redirect=",
         "redirect_url=",
         "redirecturl=",
         "return=",
         "returnurl=",
-        "url=",
         "next=",
         "continue=",
         "destination=",
         "target="
+
     ];
 
 
-    const foundRedirect =
-        redirectWords.some(
-            word =>
-                fullURL.includes(word)
+    const hasRedirect =
+        redirectPatterns.some(
+            function (pattern) {
+
+                return fullURL.includes(pattern);
+
+            }
         );
 
 
     if (
-        foundRedirect
+        hasRedirect
     ) {
 
         score += 12;
@@ -573,19 +616,19 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       12. ENCODED CHARACTER CHECK
+       12. ENCODED CHARACTERS
        ===================================================== */
 
-    const encodedCount =
+    const encodedCharacters =
         (
-            original.match(
+            originalURL.match(
                 /%[0-9a-fA-F]{2}/g
             ) || []
         ).length;
 
 
     if (
-        encodedCount >= 5
+        encodedCharacters >= 5
     ) {
 
         score += 20;
@@ -597,7 +640,7 @@ function analyzeURL(original) {
     }
 
     else if (
-        encodedCount >= 2
+        encodedCharacters >= 2
     ) {
 
         score += 8;
@@ -610,19 +653,19 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       13. SPECIAL CHARACTER CHECK
+       13. SPECIAL CHARACTERS
        ===================================================== */
 
-    const specialCharacters =
+    const specialCharacterCount =
         (
-            original.match(
+            originalURL.match(
                 /[@?=&%$!#*]/g
             ) || []
         ).length;
 
 
     if (
-        specialCharacters >= 10
+        specialCharacterCount >= 10
     ) {
 
         score += 20;
@@ -635,35 +678,31 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       14. PORT CHECK
+       14. NON-STANDARD PORT
        ===================================================== */
 
-    const port =
-        parsed.port;
-
-
     if (
-        port &&
-        port !== "80" &&
-        port !== "443"
+        parsedURL.port &&
+        parsedURL.port !== "80" &&
+        parsedURL.port !== "443"
     ) {
 
         score += 15;
 
         reasons.push(
             "⚠ Website uses a non-standard network port: " +
-            port
+            parsedURL.port
         );
 
     }
 
 
     /* =====================================================
-       15. DOUBLE-SLASH PATH CHECK
+       15. DOUBLE SLASH IN PATH
        ===================================================== */
 
     if (
-        parsed.pathname.includes("//")
+        parsedURL.pathname.includes("//")
     ) {
 
         score += 10;
@@ -676,20 +715,27 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       16. QUERY PARAMETER CHECK
+       16. MANY QUERY PARAMETERS
        ===================================================== */
 
-    const queryParameters =
-        parsed.search
-            ? parsed.search
-                .substring(1)
-                .split("&")
-                .length
-            : 0;
+    let parameterCount = 0;
 
 
     if (
-        queryParameters >= 8
+        parsedURL.search
+    ) {
+
+        parameterCount =
+            parsedURL.search
+                .substring(1)
+                .split("&")
+                .length;
+
+    }
+
+
+    if (
+        parameterCount >= 8
     ) {
 
         score += 15;
@@ -702,7 +748,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       17. UNUSUAL DOMAIN CHARACTERISTICS
+       17. UNUSUAL LETTER/NUMBER MIX
        ===================================================== */
 
     const domainWithoutTLD =
@@ -713,7 +759,7 @@ function analyzeURL(original) {
             : hostname;
 
 
-    const digitCount =
+    const numberCount =
         (
             domainWithoutTLD.match(/\d/g)
             || []
@@ -722,7 +768,7 @@ function analyzeURL(original) {
 
     if (
         domainWithoutTLD.length >= 12 &&
-        digitCount >= 4
+        numberCount >= 4
     ) {
 
         score += 15;
@@ -735,7 +781,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       18. VERY LONG DOMAIN
+       18. VERY LONG DOMAIN NAME
        ===================================================== */
 
     if (
@@ -752,16 +798,16 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       19. SENSITIVE PATH CHECK
+       19. SENSITIVE PATH
        ===================================================== */
 
-    const credentialPattern =
+    const sensitivePath =
         /\/(login|signin|verify|account|password|payment|bank|wallet)/i;
 
 
     if (
-        credentialPattern.test(
-            parsed.pathname
+        sensitivePath.test(
+            parsedURL.pathname
         )
     ) {
 
@@ -793,27 +839,36 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       LIMIT SCORE TO 100
+       REMOVE DUPLICATE INDICATORS
        ===================================================== */
 
-    score =
-        Math.min(score, 100);
+    reasons =
+        [...new Set(reasons)];
 
 
     /* =====================================================
-       CLASSIFICATION
+       FINAL SCORE
+       ===================================================== */
+
+    score =
+        Math.min(
+            score,
+            100
+        );
+
+
+    /* =====================================================
+       FINAL CLASSIFICATION
        
-       IMPORTANT:
+       THIS IS THE IMPORTANT PART.
        
-       0 indicators       = Likely Safe
-       1–2 indicators     = Suspicious
-       3+ indicators      = High Risk
-       
-       This means the displayed result ALWAYS matches
-       the number of warnings shown below.
+       0 warnings  = Likely Safe
+       1-2 warnings = Suspicious
+       3+ warnings  = High Risk
        ===================================================== */
 
     let status;
+
     let recommendation;
 
 
@@ -853,13 +908,13 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       RETURN ANALYSIS RESULT
+       RETURN RESULT
        ===================================================== */
 
     return {
 
         url:
-            original,
+            originalURL,
 
         score:
             score,
@@ -874,7 +929,7 @@ function analyzeURL(original) {
             recommendation,
 
         protocol:
-            parsed.protocol
+            parsedURL.protocol
                 .replace(":", "")
                 .toUpperCase(),
 
@@ -882,7 +937,7 @@ function analyzeURL(original) {
             hostname,
 
         length:
-            original.length
+            originalURL.length
 
     };
 
@@ -894,6 +949,43 @@ function analyzeURL(original) {
    ========================================================= */
 
 function displayResult(data) {
+
+    /*
+       Recalculate status one more time before displaying.
+
+       This guarantees that the result shown at the top
+       always agrees with the indicators below.
+    */
+
+    if (
+        data.reasons.length === 0
+    ) {
+
+        data.status =
+            "Likely Safe";
+
+    }
+
+    else if (
+        data.reasons.length <= 2
+    ) {
+
+        data.status =
+            "Suspicious";
+
+    }
+
+    else {
+
+        data.status =
+            "High Risk";
+
+    }
+
+
+    /* =====================================================
+       RESULT CONTAINER
+       ===================================================== */
 
     const result =
         document.getElementById("result");
@@ -907,7 +999,9 @@ function displayResult(data) {
     }
 
 
-    /* Result title */
+    /* =====================================================
+       RESULT TITLE
+       ===================================================== */
 
     const resultTitle =
         document.getElementById("resultTitle");
@@ -921,21 +1015,25 @@ function displayResult(data) {
     }
 
 
-    /* Risk score */
+    /* =====================================================
+       SCORE
+       ===================================================== */
 
-    const score =
+    const scoreElement =
         document.getElementById("score");
 
 
-    if (score) {
+    if (scoreElement) {
 
-        score.textContent =
+        scoreElement.textContent =
             data.score;
 
     }
 
 
-    /* Risk badge */
+    /* =====================================================
+       RISK BADGE
+       ===================================================== */
 
     const riskBadge =
         document.getElementById("riskBadge");
@@ -949,7 +1047,9 @@ function displayResult(data) {
     }
 
 
-    /* Recommendation */
+    /* =====================================================
+       RECOMMENDATION
+       ===================================================== */
 
     const recommendation =
         document.getElementById("recommendation");
@@ -963,7 +1063,9 @@ function displayResult(data) {
     }
 
 
-    /* Analyzed URL */
+    /* =====================================================
+       ANALYZED URL
+       ===================================================== */
 
     const analyzedURL =
         document.getElementById("analyzedUrl");
@@ -977,7 +1079,9 @@ function displayResult(data) {
     }
 
 
-    /* Protocol */
+    /* =====================================================
+       PROTOCOL
+       ===================================================== */
 
     const protocol =
         document.getElementById("protocol");
@@ -986,12 +1090,14 @@ function displayResult(data) {
     if (protocol) {
 
         protocol.textContent =
-            data.protocol || "--";
+            data.protocol;
 
     }
 
 
-    /* Domain */
+    /* =====================================================
+       DOMAIN
+       ===================================================== */
 
     const domain =
         document.getElementById("domain");
@@ -1000,12 +1106,14 @@ function displayResult(data) {
     if (domain) {
 
         domain.textContent =
-            data.domain || "--";
+            data.domain;
 
     }
 
 
-    /* URL length */
+    /* =====================================================
+       URL LENGTH
+       ===================================================== */
 
     const urlLength =
         document.getElementById("urlLength");
@@ -1014,29 +1122,33 @@ function displayResult(data) {
     if (urlLength) {
 
         urlLength.textContent =
-            data.length || data.url.length;
+            data.length;
 
     }
 
 
     /* =====================================================
-       DISPLAY INDICATORS
+       INDICATORS
        ===================================================== */
 
-    const container =
+    const indicators =
         document.getElementById("indicators");
 
 
-    if (container) {
+    if (indicators) {
 
-        container.innerHTML = "";
+        indicators.innerHTML = "";
 
+
+        /*
+           ZERO WARNINGS
+        */
 
         if (
             data.reasons.length === 0
         ) {
 
-            container.innerHTML = `
+            indicators.innerHTML = `
 
                 <div class="indicator safe">
 
@@ -1048,27 +1160,30 @@ function displayResult(data) {
 
         }
 
+
+        /*
+           WARNINGS FOUND
+        */
+
         else {
 
             data.reasons.forEach(
-                reason => {
+                function (reason) {
 
-                    const div =
-                        document.createElement(
-                            "div"
-                        );
+                    const indicator =
+                        document.createElement("div");
 
 
-                    div.className =
+                    indicator.className =
                         "indicator warning";
 
 
-                    div.textContent =
+                    indicator.textContent =
                         reason;
 
 
-                    container.appendChild(
-                        div
+                    indicators.appendChild(
+                        indicator
                     );
 
                 }
@@ -1079,7 +1194,9 @@ function displayResult(data) {
     }
 
 
-    /* Indicator count */
+    /* =====================================================
+       INDICATOR COUNT
+       ===================================================== */
 
     const indicatorCount =
         document.getElementById(
@@ -1089,13 +1206,22 @@ function displayResult(data) {
 
     if (indicatorCount) {
 
-        indicatorCount.textContent =
-            data.reasons.length +
-            (
-                data.reasons.length === 1
-                    ? " indicator"
-                    : " indicators"
-            );
+        if (
+            data.reasons.length === 1
+        ) {
+
+            indicatorCount.textContent =
+                "1 indicator";
+
+        }
+
+        else {
+
+            indicatorCount.textContent =
+                data.reasons.length +
+                " indicators";
+
+        }
 
     }
 
@@ -1136,7 +1262,9 @@ function displayResult(data) {
     }
 
 
-    /* Score circle */
+    /* =====================================================
+       SCORE CIRCLE COLOR
+       ===================================================== */
 
     const scoreCircle =
         document.querySelector(
@@ -1176,7 +1304,9 @@ function displayResult(data) {
     }
 
 
-    /* Scroll to result */
+    /* =====================================================
+       SCROLL TO RESULT
+       ===================================================== */
 
     if (
         result
@@ -1192,7 +1322,7 @@ function displayResult(data) {
 
 
 /* =========================================================
-   SAVE SCAN HISTORY
+   SAVE HISTORY
    ========================================================= */
 
 function saveHistory(data) {
@@ -1215,7 +1345,9 @@ function saveHistory(data) {
     });
 
 
-    /* Keep only latest 10 scans */
+    /*
+       Keep only the latest 10 scans.
+    */
 
     historyData =
         historyData.slice(0, 10);
@@ -1238,24 +1370,26 @@ function saveHistory(data) {
 
 function displayHistory() {
 
-    const container =
+    const historyList =
         document.getElementById(
             "historyList"
         );
 
 
-    if (!container) {
+    if (!historyList) {
 
         return;
 
     }
 
 
+    /* No history */
+
     if (
         historyData.length === 0
     ) {
 
-        container.innerHTML = `
+        historyList.innerHTML = `
 
             <div class="empty">
 
@@ -1278,23 +1412,21 @@ function displayHistory() {
     }
 
 
-    container.innerHTML = "";
+    historyList.innerHTML = "";
 
 
     historyData.forEach(
-        item => {
+        function (item) {
 
             const row =
-                document.createElement(
-                    "div"
-                );
+                document.createElement("div");
 
 
             row.className =
                 "history-item";
 
 
-            let color =
+            let statusColor =
                 "#28d39b";
 
 
@@ -1302,7 +1434,7 @@ function displayHistory() {
                 item.status === "High Risk"
             ) {
 
-                color =
+                statusColor =
                     "#ff596b";
 
             }
@@ -1311,7 +1443,7 @@ function displayHistory() {
                 item.status === "Suspicious"
             ) {
 
-                color =
+                statusColor =
                     "#f4c451";
 
             }
@@ -1328,7 +1460,7 @@ function displayHistory() {
 
                 <div
                     class="history-status"
-                    style="color:${color}"
+                    style="color:${statusColor}"
                 >
 
                     ${escapeHTML(item.status)}
@@ -1340,7 +1472,7 @@ function displayHistory() {
             `;
 
 
-            container.appendChild(
+            historyList.appendChild(
                 row
             );
 
@@ -1370,28 +1502,26 @@ function clearHistory() {
 
 
 /* =========================================================
-   HTML ESCAPING
+   ESCAPE HTML
    ========================================================= */
 
 function escapeHTML(value) {
 
-    const div =
-        document.createElement(
-            "div"
-        );
+    const element =
+        document.createElement("div");
 
 
-    div.textContent =
+    element.textContent =
         value;
 
 
-    return div.innerHTML;
+    return element.innerHTML;
 
 }
 
 
 /* =========================================================
-   ENTER KEY SUPPORT
+   ENTER KEY
    ========================================================= */
 
 const urlInput =
@@ -1400,11 +1530,13 @@ const urlInput =
     );
 
 
-if (urlInput) {
+if (
+    urlInput
+) {
 
     urlInput.addEventListener(
         "keydown",
-        event => {
+        function (event) {
 
             if (
                 event.key === "Enter"
@@ -1421,7 +1553,7 @@ if (urlInput) {
 
 
 /* =========================================================
-   LOAD SAVED HISTORY
+   LOAD HISTORY WHEN PAGE OPENS
    ========================================================= */
 
 displayHistory();
