@@ -1,7 +1,5 @@
 let historyData =
-    JSON.parse(
-        localStorage.getItem("phishguard_history")
-    ) || [];
+    JSON.parse(localStorage.getItem("phishguard_history")) || [];
 
 
 /* =========================================================
@@ -9,10 +7,9 @@ let historyData =
    ========================================================= */
 
 
-/* Common suspicious words found in phishing URLs */
+/* Suspicious words commonly found in phishing URLs */
 
 const suspiciousWords = [
-
     "login",
     "signin",
     "sign-in",
@@ -46,22 +43,13 @@ const suspiciousWords = [
     "credential",
     "credentials",
     "webmail",
-    "support",
-    "microsoft",
-    "paypal",
-    "apple",
-    "google",
-    "facebook",
-    "instagram",
-    "amazon",
-    "netflix"
+    "support"
 ];
 
 
-/* Common brands attackers may try to imitate */
+/* Popular brands commonly impersonated by phishing sites */
 
 const popularBrands = [
-
     "paypal",
     "microsoft",
     "google",
@@ -81,15 +69,13 @@ const popularBrands = [
     "docusign",
     "coinbase",
     "binance"
-
 ];
 
 
 /* TLDs that deserve additional scrutiny.
-   They are NOT automatically malicious. */
+   These are NOT automatically malicious. */
 
 const suspiciousTLDs = [
-
     ".tk",
     ".ml",
     ".ga",
@@ -106,7 +92,6 @@ const suspiciousTLDs = [
     ".cam",
     ".buzz",
     ".monster"
-
 ];
 
 
@@ -132,15 +117,29 @@ function scanURL() {
     }
 
 
-    document.getElementById(
-        "loading"
-    ).style.display = "block";
+    /* Show loading screen if available */
+
+    const loading =
+        document.getElementById("loading");
+
+    if (loading) {
+
+        loading.style.display = "block";
+
+    }
 
 
-    document.getElementById(
-        "result"
-    ).style.display = "none";
+    const resultBox =
+        document.getElementById("result");
 
+    if (resultBox) {
+
+        resultBox.style.display = "none";
+
+    }
+
+
+    /* Small delay for scanning animation */
 
     setTimeout(() => {
 
@@ -153,11 +152,13 @@ function scanURL() {
         saveHistory(result);
 
 
-        document.getElementById(
-            "loading"
-        ).style.display = "none";
+        if (loading) {
 
-    }, 900);
+            loading.style.display = "none";
+
+        }
+
+    }, 700);
 
 }
 
@@ -168,12 +169,11 @@ function scanURL() {
 
 function analyzeURL(original) {
 
-    let url = original.trim();
+    let url =
+        original.trim();
 
 
-    /*
-        Add protocol if the user did not enter one.
-    */
+    /* Add protocol when user enters only a domain */
 
     if (
         !url.startsWith("http://") &&
@@ -207,11 +207,17 @@ function analyzeURL(original) {
             status: "High Risk",
 
             reasons: [
-                "❌ The entered URL is invalid or cannot be parsed."
+                "🚨 The entered URL is invalid or cannot be parsed."
             ],
 
             recommendation:
-                "Do not open this link. Check the URL carefully."
+                "Do not open this link. Check the URL carefully.",
+
+            protocol: "--",
+
+            domain: "--",
+
+            length: original.length
 
         };
 
@@ -292,7 +298,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       4. URL LENGTH
+       4. URL LENGTH CHECK
        ===================================================== */
 
     if (
@@ -321,7 +327,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       5. @ SYMBOL
+       5. @ SYMBOL CHECK
        ===================================================== */
 
     if (
@@ -338,7 +344,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       6. MULTIPLE SUBDOMAINS
+       6. SUBDOMAIN CHECK
        ===================================================== */
 
     const hostnameParts =
@@ -410,7 +416,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       8. SUSPICIOUS TLD
+       8. SUSPICIOUS TLD CHECK
        ===================================================== */
 
     const suspiciousTLD =
@@ -427,7 +433,7 @@ function analyzeURL(original) {
         score += 15;
 
         reasons.push(
-            "⚠ Domain uses a TLD frequently associated with suspicious links: " +
+            "⚠ Domain uses a TLD frequently seen in suspicious links: " +
             suspiciousTLD
         );
 
@@ -486,8 +492,14 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       10. BRAND IMPERSONATION
+       10. BRAND IMPERSONATION CHECK
        ===================================================== */
+
+    const baseDomain =
+        hostnameParts.length >= 2
+            ? hostnameParts.slice(-2).join(".")
+            : hostname;
+
 
     const brandMatches =
         popularBrands.filter(
@@ -496,55 +508,37 @@ function analyzeURL(original) {
         );
 
 
+    const impersonatedBrand =
+        brandMatches.find(
+            brand =>
+                !baseDomain.startsWith(
+                    brand + "."
+                ) &&
+                !baseDomain.startsWith(
+                    brand
+                )
+        );
+
+
     if (
-        brandMatches.length > 0
+        impersonatedBrand
     ) {
 
-        /*
-           Determine whether the brand is actually
-           the registered-looking domain itself.
-        */
+        score += 30;
 
-        const baseDomain =
-            hostnameParts
-                .slice(-2)
-                .join(".");
-
-
-        const impersonatedBrand =
-            brandMatches.find(
-                brand =>
-                    !baseDomain.startsWith(
-                        brand + "."
-                    ) &&
-                    !baseDomain.includes(
-                        brand
-                    )
-            );
-
-
-        if (
+        reasons.push(
+            "🚨 Possible brand impersonation detected: " +
             impersonatedBrand
-        ) {
-
-            score += 30;
-
-            reasons.push(
-                "🚨 Possible brand impersonation detected: " +
-                impersonatedBrand
-            );
-
-        }
+        );
 
     }
 
 
     /* =====================================================
-       11. REDIRECT PARAMETERS
+       11. REDIRECT PARAMETER CHECK
        ===================================================== */
 
     const redirectWords = [
-
         "redirect=",
         "redirect_url=",
         "redirecturl=",
@@ -555,7 +549,6 @@ function analyzeURL(original) {
         "continue=",
         "destination=",
         "target="
-
     ];
 
 
@@ -580,13 +573,14 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       12. ENCODED CHARACTERS
+       12. ENCODED CHARACTER CHECK
        ===================================================== */
 
     const encodedCount =
         (
-            original.match(/%[0-9a-fA-F]{2}/g)
-            || []
+            original.match(
+                /%[0-9a-fA-F]{2}/g
+            ) || []
         ).length;
 
 
@@ -616,7 +610,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       13. SPECIAL CHARACTER COUNT
+       13. SPECIAL CHARACTER CHECK
        ===================================================== */
 
     const specialCharacters =
@@ -665,7 +659,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       15. DOUBLE SLASH PATH
+       15. DOUBLE-SLASH PATH CHECK
        ===================================================== */
 
     if (
@@ -682,7 +676,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       16. EXCESSIVE QUERY PARAMETERS
+       16. QUERY PARAMETER CHECK
        ===================================================== */
 
     const queryParameters =
@@ -708,7 +702,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       17. RANDOM-LOOKING DOMAIN
+       17. UNUSUAL DOMAIN CHARACTERISTICS
        ===================================================== */
 
     const domainWithoutTLD =
@@ -758,7 +752,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       19. CREDENTIAL PATH
+       19. SENSITIVE PATH CHECK
        ===================================================== */
 
     const credentialPattern =
@@ -781,7 +775,7 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       20. DATA URI / JAVASCRIPT URL
+       20. DANGEROUS URL SCHEME
        ===================================================== */
 
     if (
@@ -799,69 +793,82 @@ function analyzeURL(original) {
 
 
     /* =====================================================
-       FINAL SCORE
+       LIMIT SCORE TO 100
        ===================================================== */
 
     score =
-        Math.min(
-            score,
-            100
-        );
+        Math.min(score, 100);
 
 
     /* =====================================================
        CLASSIFICATION
+       
+       IMPORTANT:
+       
+       0 indicators       = Likely Safe
+       1–2 indicators     = Suspicious
+       3+ indicators      = High Risk
+       
+       This means the displayed result ALWAYS matches
+       the number of warnings shown below.
        ===================================================== */
 
     let status;
-
     let recommendation;
 
 
     if (
-        score >= 70
+        reasons.length === 0
     ) {
 
         status =
-            "High Risk";
+            "Likely Safe";
 
         recommendation =
-            "This URL contains several suspicious characteristics. Avoid opening it or entering personal information.";
+            "No suspicious URL patterns were detected. However, this does not guarantee that the website is completely safe.";
 
     }
 
     else if (
-        score >= 35
+        reasons.length <= 2
     ) {
 
         status =
             "Suspicious";
 
         recommendation =
-            "This URL contains potentially suspicious characteristics. Verify the website independently before continuing.";
+            "This URL contains suspicious characteristics. Verify the website carefully before continuing.";
 
     }
 
     else {
 
         status =
-            "Likely Safe";
+            "High Risk";
 
         recommendation =
-            "No major suspicious URL patterns were detected. However, this does not guarantee that the website is safe.";
+            "This URL contains multiple suspicious characteristics. Avoid opening the link or entering personal information.";
 
     }
 
 
+    /* =====================================================
+       RETURN ANALYSIS RESULT
+       ===================================================== */
+
     return {
 
-        url: original,
+        url:
+            original,
 
-        score: score,
+        score:
+            score,
 
-        status: status,
+        status:
+            status,
 
-        reasons: reasons,
+        reasons:
+            reasons,
 
         recommendation:
             recommendation,
@@ -888,185 +895,304 @@ function analyzeURL(original) {
 
 function displayResult(data) {
 
-    document.getElementById(
-        "result"
-    ).style.display = "block";
+    const result =
+        document.getElementById("result");
 
 
-    document.getElementById(
-        "resultTitle"
-    ).textContent =
-        data.status;
+    if (result) {
+
+        result.style.display =
+            "block";
+
+    }
 
 
-    document.getElementById(
-        "score"
-    ).textContent =
-        data.score;
+    /* Result title */
+
+    const resultTitle =
+        document.getElementById("resultTitle");
 
 
-    document.getElementById(
-        "riskBadge"
-    ).textContent =
-        data.status;
+    if (resultTitle) {
+
+        resultTitle.textContent =
+            data.status;
+
+    }
 
 
-    document.getElementById(
-        "recommendation"
-    ).textContent =
-        data.recommendation;
+    /* Risk score */
+
+    const score =
+        document.getElementById("score");
 
 
-    document.getElementById(
-        "analyzedUrl"
-    ).textContent =
-        data.url;
+    if (score) {
+
+        score.textContent =
+            data.score;
+
+    }
 
 
-    document.getElementById(
-        "protocol"
-    ).textContent =
-        data.protocol || "--";
+    /* Risk badge */
+
+    const riskBadge =
+        document.getElementById("riskBadge");
 
 
-    document.getElementById(
-        "domain"
-    ).textContent =
-        data.domain || "--";
+    if (riskBadge) {
+
+        riskBadge.textContent =
+            data.status;
+
+    }
 
 
-    document.getElementById(
-        "urlLength"
-    ).textContent =
-        data.length ||
-        data.url.length;
+    /* Recommendation */
 
+    const recommendation =
+        document.getElementById("recommendation");
+
+
+    if (recommendation) {
+
+        recommendation.textContent =
+            data.recommendation;
+
+    }
+
+
+    /* Analyzed URL */
+
+    const analyzedURL =
+        document.getElementById("analyzedUrl");
+
+
+    if (analyzedURL) {
+
+        analyzedURL.textContent =
+            data.url;
+
+    }
+
+
+    /* Protocol */
+
+    const protocol =
+        document.getElementById("protocol");
+
+
+    if (protocol) {
+
+        protocol.textContent =
+            data.protocol || "--";
+
+    }
+
+
+    /* Domain */
+
+    const domain =
+        document.getElementById("domain");
+
+
+    if (domain) {
+
+        domain.textContent =
+            data.domain || "--";
+
+    }
+
+
+    /* URL length */
+
+    const urlLength =
+        document.getElementById("urlLength");
+
+
+    if (urlLength) {
+
+        urlLength.textContent =
+            data.length || data.url.length;
+
+    }
+
+
+    /* =====================================================
+       DISPLAY INDICATORS
+       ===================================================== */
 
     const container =
-        document.getElementById(
-            "indicators"
-        );
+        document.getElementById("indicators");
 
 
-    container.innerHTML = "";
+    if (container) {
+
+        container.innerHTML = "";
 
 
-    if (
-        data.reasons.length === 0
-    ) {
+        if (
+            data.reasons.length === 0
+        ) {
 
-        container.innerHTML = `
+            container.innerHTML = `
 
-            <div class="indicator safe">
+                <div class="indicator safe">
 
-                ✓ No major suspicious indicators detected
+                    ✓ No major suspicious indicators detected
 
-            </div>
+                </div>
 
-        `;
+            `;
 
-    }
+        }
 
-    else {
+        else {
 
-        data.reasons.forEach(
-            reason => {
+            data.reasons.forEach(
+                reason => {
 
-                const div =
-                    document.createElement(
-                        "div"
+                    const div =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    div.className =
+                        "indicator warning";
+
+
+                    div.textContent =
+                        reason;
+
+
+                    container.appendChild(
+                        div
                     );
 
+                }
+            );
 
-                div.className =
-                    "indicator warning";
+        }
+
+    }
 
 
-                div.textContent =
-                    reason;
+    /* Indicator count */
 
-
-                container.appendChild(
-                    div
-                );
-
-            }
+    const indicatorCount =
+        document.getElementById(
+            "indicatorCount"
         );
 
+
+    if (indicatorCount) {
+
+        indicatorCount.textContent =
+            data.reasons.length +
+            (
+                data.reasons.length === 1
+                    ? " indicator"
+                    : " indicators"
+            );
+
     }
 
 
-    document.getElementById(
-        "indicatorCount"
-    ).textContent =
-
-        data.reasons.length +
-        " indicators";
-
-
-    /* Risk colors */
+    /* =====================================================
+       RISK COLORS
+       ===================================================== */
 
     if (
-        data.score >= 70
+        riskBadge
     ) {
 
-        document.getElementById(
-            "riskBadge"
-        ).style.color =
-            "#ff596b";
+        if (
+            data.status === "High Risk"
+        ) {
 
+            riskBadge.style.color =
+                "#ff596b";
 
-        document.querySelector(
-            ".score-circle"
-        ).style.borderColor =
-            "#69313b";
+        }
+
+        else if (
+            data.status === "Suspicious"
+        ) {
+
+            riskBadge.style.color =
+                "#f4c451";
+
+        }
+
+        else {
+
+            riskBadge.style.color =
+                "#28d39b";
+
+        }
 
     }
 
-    else if (
-        data.score >= 35
+
+    /* Score circle */
+
+    const scoreCircle =
+        document.querySelector(
+            ".score-circle"
+        );
+
+
+    if (
+        scoreCircle
     ) {
 
-        document.getElementById(
-            "riskBadge"
-        ).style.color =
-            "#f4c451";
+        if (
+            data.status === "High Risk"
+        ) {
 
+            scoreCircle.style.borderColor =
+                "#69313b";
 
-        document.querySelector(
-            ".score-circle"
-        ).style.borderColor =
-            "#66532b";
+        }
+
+        else if (
+            data.status === "Suspicious"
+        ) {
+
+            scoreCircle.style.borderColor =
+                "#66532b";
+
+        }
+
+        else {
+
+            scoreCircle.style.borderColor =
+                "#24614e";
+
+        }
 
     }
 
-    else {
 
-        document.getElementById(
-            "riskBadge"
-        ).style.color =
-            "#28d39b";
+    /* Scroll to result */
 
+    if (
+        result
+    ) {
 
-        document.querySelector(
-            ".score-circle"
-        ).style.borderColor =
-            "#24614e";
+        result.scrollIntoView({
+            behavior: "smooth"
+        });
 
     }
-
-
-    document.getElementById(
-        "result"
-    ).scrollIntoView({
-        behavior: "smooth"
-    });
 
 }
 
 
 /* =========================================================
-   HISTORY
+   SAVE SCAN HISTORY
    ========================================================= */
 
 function saveHistory(data) {
@@ -1089,18 +1215,15 @@ function saveHistory(data) {
     });
 
 
+    /* Keep only latest 10 scans */
+
     historyData =
-        historyData.slice(
-            0,
-            10
-        );
+        historyData.slice(0, 10);
 
 
     localStorage.setItem(
         "phishguard_history",
-        JSON.stringify(
-            historyData
-        )
+        JSON.stringify(historyData)
     );
 
 
@@ -1119,6 +1242,13 @@ function displayHistory() {
         document.getElementById(
             "historyList"
         );
+
+
+    if (!container) {
+
+        return;
+
+    }
 
 
     if (
@@ -1169,7 +1299,7 @@ function displayHistory() {
 
 
             if (
-                item.score >= 70
+                item.status === "High Risk"
             ) {
 
                 color =
@@ -1178,7 +1308,7 @@ function displayHistory() {
             }
 
             else if (
-                item.score >= 35
+                item.status === "Suspicious"
             ) {
 
                 color =
@@ -1240,7 +1370,7 @@ function clearHistory() {
 
 
 /* =========================================================
-   HTML SECURITY
+   HTML ESCAPING
    ========================================================= */
 
 function escapeHTML(value) {
@@ -1264,9 +1394,15 @@ function escapeHTML(value) {
    ENTER KEY SUPPORT
    ========================================================= */
 
-document
-    .getElementById("urlInput")
-    .addEventListener(
+const urlInput =
+    document.getElementById(
+        "urlInput"
+    );
+
+
+if (urlInput) {
+
+    urlInput.addEventListener(
         "keydown",
         event => {
 
@@ -1281,9 +1417,11 @@ document
         }
     );
 
+}
+
 
 /* =========================================================
-   LOAD HISTORY
+   LOAD SAVED HISTORY
    ========================================================= */
 
 displayHistory();
