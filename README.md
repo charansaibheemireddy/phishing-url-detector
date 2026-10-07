@@ -11,11 +11,7 @@ The project provides a clean security dashboard where users can scan URLs, view 
 ## 🌐 Live Demo
 
 🔗 **Live Website:**  
-https://YOUR-GITHUB-USERNAME.github.io/YOUR-REPOSITORY-NAME/
-
-Replace the link above with your actual GitHub Pages URL.
-
----
+https://charansaibheemireddy.github.io/phishing-url-detector/
 
 ## ✨ Features
 
