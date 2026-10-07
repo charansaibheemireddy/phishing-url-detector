@@ -1,0 +1,191 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #080b12;
+    color: white;
+    min-height: 100vh;
+}
+
+nav {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8%;
+    border-bottom: 1px solid #202532;
+}
+
+.logo {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.nav-text {
+    color: #9ba3b4;
+}
+
+main {
+    display: flex;
+    justify-content: center;
+    padding: 80px 20px;
+}
+
+.hero {
+    width: 850px;
+    text-align: center;
+}
+
+.badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid #303746;
+    border-radius: 20px;
+    color: #8ea2c7;
+    font-size: 12px;
+    margin-bottom: 25px;
+}
+
+h1 {
+    font-size: 55px;
+    margin-bottom: 20px;
+}
+
+h1 span {
+    color: #6ea8fe;
+}
+
+.hero > p {
+    color: #9ba3b4;
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 40px;
+}
+
+.scanner {
+    display: flex;
+    gap: 10px;
+    background: #111620;
+    padding: 10px;
+    border: 1px solid #2a3140;
+    border-radius: 12px;
+}
+
+.scanner input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    padding: 15px;
+    font-size: 16px;
+}
+
+.scanner button {
+    border: none;
+    border-radius: 8px;
+    padding: 0 25px;
+    background: #377dff;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.scanner button:hover {
+    background: #2865d8;
+}
+
+.loading {
+    display: none;
+    margin-top: 25px;
+    color: #8ea2c7;
+}
+
+.result {
+    display: none;
+    margin-top: 35px;
+    background: #111620;
+    border: 1px solid #2a3140;
+    border-radius: 15px;
+    padding: 30px;
+    text-align: left;
+}
+
+.score-section {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    border-bottom: 1px solid #2a3140;
+    padding-bottom: 25px;
+}
+
+.score {
+    font-size: 42px;
+    font-weight: bold;
+    color: #6ea8fe;
+}
+
+.score-section h2 {
+    margin-bottom: 5px;
+}
+
+.score-section p {
+    color: #9ba3b4;
+}
+
+.details {
+    padding: 25px 0;
+}
+
+.details h3 {
+    margin-bottom: 15px;
+}
+
+.details li {
+    margin: 10px 0;
+    color: #c2c8d4;
+}
+
+.recommendation {
+    padding: 20px;
+    background: #0b0f17;
+    border-radius: 10px;
+}
+
+.recommendation p {
+    color: #c2c8d4;
+    margin-top: 8px;
+}
+
+footer {
+    text-align: center;
+    color: #6d7482;
+    padding: 30px;
+}
+
+@media (max-width: 650px) {
+
+    h1 {
+        font-size: 38px;
+    }
+
+    .scanner {
+        flex-direction: column;
+    }
+
+    .scanner button {
+        padding: 15px;
+    }
+
+    nav {
+        padding: 0 5%;
+    }
+
+    .nav-text {
+        display: none;
+    }
+}
